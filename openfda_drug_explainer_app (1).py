@@ -3,7 +3,7 @@ import requests
 import json
 
 # Set your Gemini API key here
-GEMINI_API_KEY = "Gemini API"
+GEMINI_API_KEY = "AIzaSyC0K_gzLByRB6AIqjqkV6_T34vhWNOiN_8"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
 
 def explain_drug_gemini(drug_name):
