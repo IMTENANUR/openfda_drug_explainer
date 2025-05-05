@@ -1,57 +1,58 @@
 import streamlit as st
 import requests
+import json
 
-# Simulated knowledge base for demonstration purposes
-drug_database = {
-    "ketoconazole": {
-        "Class": "Antifungal (Imidazole derivative)",
-        "MoA": "Blocks production of ergosterol, an essential part of the fungal cell membrane.",
-        "Explanation": "Imagine ergosterol as the bricks of a fungal house. Without it, the wall collapses and the fungus dies.",
-        "Uses": ["Dandruff", "Fungal skin infections", "Seborrheic dermatitis"],
-        "Side Effects": ["Nausea", "Stomach pain", "Liver problems (rare)"],
-        "Why Side Effects Occur": "It affects human enzymes related to cholesterol synthesis, which can stress the liver."
-    },
-    "metformin": {
-        "Class": "Antidiabetic (Biguanide)",
-        "MoA": "Reduces glucose production in the liver and increases insulin sensitivity.",
-        "Explanation": "Think of it as helping your body respond better to insulin and keeping sugar production low.",
-        "Uses": ["Type 2 Diabetes"],
-        "Side Effects": ["Nausea", "Diarrhea", "Metallic taste"],
-        "Why Side Effects Occur": "Changes in how your gut processes sugar can cause stomach issues."
+# Set your Google API key here
+GOOGLE_API_KEY = "AIzaSyAe-n2PtMDKmNMG9urIswDU8tT00LvdbMU"
+PALM_API_URL = "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText"
+
+# Function to call PaLM for AI explanation
+def get_ai_explanation(drug_name):
+    prompt = f"""
+Explain the following drug to a pharmacy student:
+
+Drug: {drug_name}
+1. What is its class and mechanism of action (MoA)?
+2. Explain the MoA in simple, real-world terms (e.g. analogies).
+3. What are the common side effects?
+4. How are these side effects linked to the MoA?
+
+Keep it brief, clear, and student-friendly.
+    """
+
+    headers = {"Content-Type": "application/json"}
+    params = {"key": GOOGLE_API_KEY}
+    body = {
+        "prompt": {"text": prompt},
+        "temperature": 0.6,
+        "maxOutputTokens": 512,
+        "topK": 40,
+        "topP": 0.95
     }
-}
 
-# Page layout
-st.set_page_config(page_title="💊 Drug Explainer", layout="centered")
-st.title("💊 Simple Drug Explainer for Students")
-st.caption("Understand any drug’s mechanism of action and side effects — in plain language with visuals.")
+    response = requests.post(PALM_API_URL, headers=headers, params=params, json=body)
+    if response.status_code == 200:
+        return response.json()["candidates"][0]["output"]
+    else:
+        raise Exception(f"PaLM API Error {response.status_code}: {response.text}")
 
-with st.form("drug_lookup"):
-    drug_name = st.text_input("🔍 Enter Drug Name (e.g., ketoconazole, metformin)").strip().lower()
+# Streamlit UI
+st.set_page_config(page_title="💊 Drug Explainer with AI", layout="centered")
+st.title("💊 AI-Powered Drug Explainer")
+st.caption("Type in any **drug name** to get a student-friendly explanation with mechanism of action and side effect reasoning.")
+
+with st.form("ai_drug_form"):
+    drug_name = st.text_input("🔍 Enter Drug Name", "ketoconazole").strip()
     submitted = st.form_submit_button("Explain")
 
 if submitted:
-    if drug_name in drug_database:
-        info = drug_database[drug_name]
-
-        st.markdown("### 🧪 Basic Info")
-        col1, col2 = st.columns(2)
-        col1.metric("Drug", drug_name.title())
-        col2.metric("Class", info["Class"])
-
-        st.markdown("### 🔬 Mechanism of Action")
-        st.success(info["MoA"])
-        st.markdown("#### ✅ Plain Explanation")
-        st.info(info["Explanation"])
-
-        st.markdown("### 📌 Common Uses")
-        st.write(", ".join(info["Uses"]))
-
-        st.markdown("### ⚠️ Common Side Effects")
-        st.error(", ".join(info["Side Effects"]))
-
-        st.markdown("### 🧠 Why These Side Effects?")
-        st.warning(info["Why Side Effects Occur"])
-
+    if drug_name:
+        with st.spinner("🧠 Thinking... Generating explanation via AI..."):
+            try:
+                explanation = get_ai_explanation(drug_name)
+                st.markdown("### 🧪 AI-Generated Explanation")
+                st.write(explanation)
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
     else:
-        st.error("Sorry, this drug is not in our database yet. Please try 'ketoconazole' or 'metformin'.")
+        st.warning("Please enter a valid drug name.")
